@@ -11,24 +11,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+
       - name: Create Android project shell
         run: flutter create --org com.arvin --project-name arvin /tmp/arvin
+
       - name: Copy Arvin source
         run: |
           cp pubspec.yaml /tmp/arvin/pubspec.yaml
           cp lib/main.dart /tmp/arvin/lib/main.dart
           mkdir -p /tmp/arvin/assets/fonts
-          curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Regular.ttf https://github.com/rastikerdar/vazirmatn/raw/master/ttf/Vazirmatn-Regular.ttf
-          curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Bold.ttf https://github.com/rastikerdar/vazirmatn/raw/master/ttf/Vazirmatn-Bold.ttf
+          curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Regular.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Regular.ttf
+          curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Bold.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Bold.ttf
+
       - name: Build release APK
         working-directory: /tmp/arvin
         run: |
           flutter pub get
           flutter build apk --release
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
