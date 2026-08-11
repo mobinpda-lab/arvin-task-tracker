@@ -1,0 +1,84 @@
+name: Build Arvin APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Create Flutter project
+        run: |
+          flutter create \
+            --org com.arvin \
+            --project-name arvin \
+            /tmp/arvin
+
+      - name: Create Arvin application
+        run: |
+          cat > /tmp/arvin/lib/main.dart <<'EOF'
+          import 'package:flutter/material.dart';
+
+          void main() {
+            runApp(const ArvinApp());
+          }
+
+          class ArvinApp extends StatelessWidget {
+            const ArvinApp({super.key});
+
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: 'آروین',
+                theme: ThemeData(
+                  useMaterial3: true,
+                  fontFamily: 'sans',
+                ),
+                home: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: Scaffold(
+                    appBar: AppBar(
+                      title: const Text('آروین'),
+                      centerTitle: true,
+                    ),
+                    body: const Center(
+                      child: Text(
+                        'آروین\nمدیریت کارها و پیگیری‌ها',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+          EOF
+
+      - name: Build APK
+        working-directory: /tmp/arvin
+        run: |
+          flutter pub get
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: arvin-apk
+          path: /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
