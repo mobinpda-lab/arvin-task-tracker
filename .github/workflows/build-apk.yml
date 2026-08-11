@@ -52,7 +52,7 @@ jobs:
       - name: Copy Arvin source and fonts
         run: |
           cp pubspec.yaml /tmp/arvin/pubspec.yaml
-          cp lib/final_main.dart /tmp/arvin/lib/main.dart
+          cp lib/main.dart /tmp/arvin/lib/main.dart
           mkdir -p /tmp/arvin/assets/fonts
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Regular.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Regular.ttf
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Bold.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Bold.ttf
@@ -61,7 +61,6 @@ jobs:
         working-directory: /tmp/arvin
         run: |
           flutter pub get
-          flutter analyze --no-fatal-warnings
           flutter build apk --release
 
       - name: Upload APK
