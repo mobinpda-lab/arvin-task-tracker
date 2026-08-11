@@ -20,29 +20,54 @@ jobs:
       - name: Create Android project shell
         run: flutter create --org com.arvin --project-name arvin /tmp/arvin
 
-      - name: Configure Android notifications and desugaring
+      - name: Configure Android for scheduled notifications
+        working-directory: /tmp/arvin
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          gradle = Path('/tmp/arvin/android/app/build.gradle.kts')
-          text = gradle.read_text()
-          text = re.sub(r'\n\s*isCoreLibraryDesugaringEnabled\s*=\s*true', '', text)
-          text = re.sub(r'\n\s*coreLibraryDesugaring\([^\n]+\)', '', text)
-          text = text.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
-          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")' not in text:
-              text = text.replace('dependencies {', 'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")', 1)
-          gradle.write_text(text)
+          p = Path('android/app/build.gradle.kts')
+          s = p.read_text()
 
-          manifest = Path('/tmp/arvin/android/app/src/main/AndroidManifest.xml')
-          text = manifest.read_text()
-          if 'android.permission.POST_NOTIFICATIONS' not in text:
-              text = text.replace('<application ', '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <application ', 1)
-          if 'ScheduledNotificationReceiver' not in text:
+          # Compile SDK required by flutter_local_notifications 19+.
+          s = re.sub(r'compileSdk\s*=\s*\d+', 'compileSdk = 35', s)
+          if 'compileSdk = 35' not in s and 'compileSdk 35' not in s:
+              s = s.replace('android {', 'android {\n    compileSdk = 35', 1)
+
+          # Enable core library desugaring and Java 17.
+          if 'isCoreLibraryDesugaringEnabled = true' not in s:
+              s = s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
+          s = re.sub(r'sourceCompatibility\s*=\s*JavaVersion\.VERSION_\d+', 'sourceCompatibility = JavaVersion.VERSION_17', s)
+          s = re.sub(r'targetCompatibility\s*=\s*JavaVersion\.VERSION_\d+', 'targetCompatibility = JavaVersion.VERSION_17', s)
+          s = re.sub(r'jvmTarget\s*=\s*JavaVersion\.VERSION_\d+\.toString\(\)', 'jvmTarget = JavaVersion.VERSION_17.toString()', s)
+
+          # Add the desugaring library to the app dependencies block.
+          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' not in s:
+              idx = s.find('dependencies {')
+              if idx == -1:
+                  raise SystemExit('Could not find dependencies block in android/app/build.gradle.kts')
+              line_end = s.find('\n', idx)
+              if line_end == -1:
+                  line_end = len(s)
+              s = s[:line_end + 1] + '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n' + s[line_end + 1:]
+
+          p.write_text(s)
+          PY
+
+          echo '--- android/app/build.gradle.kts (relevant lines) ---'
+          grep -n -E 'compileSdk|compileOptions|isCoreLibraryDesugaringEnabled|sourceCompatibility|targetCompatibility|jvmTarget|dependencies|coreLibraryDesugaring' android/app/build.gradle.kts
+
+          python3 - <<'PY'
+          from pathlib import Path
+          m = Path('android/app/src/main/AndroidManifest.xml')
+          s = m.read_text()
+          if 'android.permission.POST_NOTIFICATIONS' not in s:
+              s = s.replace('<application ', '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <application ', 1)
+          if 'ScheduledNotificationReceiver' not in s:
               receivers = '''\n        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n            <intent-filter>\n                <action android:name="android.intent.action.BOOT_COMPLETED"/>\n                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>\n                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>\n                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>\n            </intent-filter>\n        </receiver>\n'''
-              text = text.replace('    </application>', receivers + '    </application>', 1)
-          manifest.write_text(text)
+              s = s.replace('    </application>', receivers + '    </application>', 1)
+          m.write_text(s)
           PY
 
       - name: Copy Arvin source and fonts
