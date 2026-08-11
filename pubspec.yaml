@@ -1,7 +1,7 @@
 name: arvin
 description: آروین - مدیریت کارها، یادداشت‌ها و پیگیری‌ها
 publish_to: "none"
-version: 0.1.0+2
+version: 0.3.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -9,13 +9,20 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  shared_preferences: ^2.5.3
+  shared_preferences: ^2.5.5
   shamsi_date: ^1.1.1
-  flutter_local_notifications: ^19.4.2
+  flutter_local_notifications: ^19.5.0
   timezone: ^0.10.1
+  pdf: ^3.11.3
+  printing: ^5.14.2
+  share_plus: ^11.0.0
+  file_picker: ^10.2.0
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/fonts/Vazirmatn-Regular.ttf
+    - assets/fonts/Vazirmatn-Bold.ttf
   fonts:
     - family: Vazirmatn
       fonts:
