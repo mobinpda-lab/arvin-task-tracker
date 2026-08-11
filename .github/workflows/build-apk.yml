@@ -30,31 +30,21 @@ jobs:
           p = Path('android/app/build.gradle.kts')
           s = p.read_text()
 
-          # Compile SDK required by flutter_local_notifications 19+.
           s = re.sub(r'compileSdk\s*=\s*\d+', 'compileSdk = 35', s)
           if 'compileSdk = 35' not in s and 'compileSdk 35' not in s:
               s = s.replace('android {', 'android {\n    compileSdk = 35', 1)
 
-          # Enable core library desugaring and Java 17.
           if 'isCoreLibraryDesugaringEnabled = true' not in s:
               s = s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
           s = re.sub(r'sourceCompatibility\s*=\s*JavaVersion\.VERSION_\d+', 'sourceCompatibility = JavaVersion.VERSION_17', s)
           s = re.sub(r'targetCompatibility\s*=\s*JavaVersion\.VERSION_\d+', 'targetCompatibility = JavaVersion.VERSION_17', s)
           s = re.sub(r'jvmTarget\s*=\s*JavaVersion\.VERSION_\d+\.toString\(\)', 'jvmTarget = JavaVersion.VERSION_17.toString()', s)
 
-          # Flutter's current Android template may omit an app dependencies block.
-          # Add one explicitly so the desugaring dependency is always present.
           if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' not in s:
-              dep = '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
-              s += dep
+              s += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
 
           p.write_text(s)
-          PY
 
-          echo '--- android/app/build.gradle.kts (relevant lines) ---'
-          grep -n -E 'compileSdk|compileOptions|isCoreLibraryDesugaringEnabled|sourceCompatibility|targetCompatibility|jvmTarget|dependencies|coreLibraryDesugaring' android/app/build.gradle.kts || true
-
-          python3 - <<'PY'
           from pathlib import Path
           m = Path('android/app/src/main/AndroidManifest.xml')
           s = m.read_text()
@@ -73,6 +63,55 @@ jobs:
           mkdir -p /tmp/arvin/assets/fonts
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Regular.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Regular.ttf
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Bold.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Bold.ttf
+
+      - name: Apply Arvin 0.2 fixes and Persian calendar
+        working-directory: /tmp/arvin
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          pubspec = Path('pubspec.yaml')
+          p = pubspec.read_text()
+          if 'flutter_jalali_date_picker:' not in p:
+              p = p.replace('dependencies:\n', 'dependencies:\n  flutter_jalali_date_picker: ^2.2.5\n', 1)
+          pubspec.write_text(p)
+
+          main = Path('lib/main.dart')
+          s = main.read_text()
+
+          if "package:flutter_jalali_date_picker/flutter_jalali_date_picker.dart" not in s:
+              s = s.replace(
+                  "import 'package:shamsi_date/shamsi_date.dart';\n",
+                  "import 'package:shamsi_date/shamsi_date.dart';\nimport 'package:flutter_jalali_date_picker/flutter_jalali_date_picker.dart';\n",
+                  1,
+              )
+
+          helper = '''\nFuture<DateTime?> showArvinDatePicker({\n  required BuildContext context,\n  required DateTime firstDate,\n  required DateTime lastDate,\n  required DateTime initialDate,\n}) async {\n  final initialJalali = Gregorian.fromDateTime(initialDate).toJalali();\n  final firstJalali = Gregorian.fromDateTime(firstDate).toJalali();\n  final lastJalali = Gregorian.fromDateTime(lastDate).toJalali();\n\n  final picked = await showJalaliDatePicker(\n    context,\n    initialDate: initialJalali,\n    firstDate: firstJalali,\n    lastDate: lastJalali,\n  );\n  if (picked == null) return null;\n  final g = picked.toGregorian();\n  return DateTime(g.year, g.month, g.day);\n}\n\n'''
+          if 'Future<DateTime?> showArvinDatePicker' not in s:
+              s = s.replace('Future<void> initNotifications() async {', helper + 'Future<void> initNotifications() async {', 1)
+
+          s = s.replace('showDatePicker(', 'showArvinDatePicker(')
+
+          s = s.replace(
+              'onPressed: widget.onFollow,',
+              '''onPressed: () async {\n                    await widget.onFollow();\n                    if (mounted) setState(() {});\n                  },''',
+          )
+
+          if "String categoryFilter = 'همه';" not in s:
+              s = s.replace("  String filter = 'همه';\n", "  String filter = 'همه';\n  String categoryFilter = 'همه';\n", 1)
+
+          marker = "    }).where((x) {\n      if (query.isEmpty) return true;\n"
+          replacement = "    }).where((x) => categoryFilter == 'همه' || x.category == categoryFilter).where((x) {\n      if (query.isEmpty) return true;\n"
+          if marker in s and replacement not in s:
+              s = s.replace(marker, replacement, 1)
+
+          appbar_marker = '''          IconButton(icon: const Icon(Icons.menu), onPressed: menu),\n        ],\n      ),\n      body:'''
+          appbar_replacement = '''          IconButton(icon: const Icon(Icons.menu), onPressed: menu),\n        ],\n        bottom: PreferredSize(\n          preferredSize: const Size.fromHeight(48),\n          child: SingleChildScrollView(\n            scrollDirection: Axis.horizontal,\n            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),\n            child: Row(\n              children: [\n                for (final c in ['همه', ...categories])\n                  Padding(\n                    padding: const EdgeInsets.symmetric(horizontal: 3),\n                    child: ChoiceChip(\n                      label: Text(c),\n                      selected: categoryFilter == c,\n                      onSelected: (_) => setState(() => categoryFilter = c),\n                    ),\n                  ),\n              ],\n            ),\n          ),\n        ),\n      ),\n      body:'''
+          if appbar_marker in s:
+              s = s.replace(appbar_marker, appbar_replacement, 1)
+
+          main.write_text(s)
+          PY
 
       - name: Build release APK
         working-directory: /tmp/arvin
