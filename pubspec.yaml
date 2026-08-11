@@ -10,11 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
   shared_preferences: ^2.5.3
+  shamsi_date: ^1.1.1
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/fonts/
   fonts:
     - family: Vazirmatn
       fonts:
