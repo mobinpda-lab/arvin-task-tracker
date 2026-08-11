@@ -29,16 +29,33 @@ jobs:
 
           p = Path('android/app/build.gradle.kts')
           s = p.read_text()
+
+          # Compile SDK required by flutter_local_notifications 19+.
           s = re.sub(r'compileSdk\s*=\s*\d+', 'compileSdk = 35', s)
+          if 'compileSdk = 35' not in s and 'compileSdk 35' not in s:
+              s = s.replace('android {', 'android {\n    compileSdk = 35', 1)
+
+          # Enable core library desugaring and Java 17.
           if 'isCoreLibraryDesugaringEnabled = true' not in s:
               s = s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
           s = re.sub(r'sourceCompatibility\s*=\s*JavaVersion\.VERSION_\d+', 'sourceCompatibility = JavaVersion.VERSION_17', s)
           s = re.sub(r'targetCompatibility\s*=\s*JavaVersion\.VERSION_\d+', 'targetCompatibility = JavaVersion.VERSION_17', s)
           s = re.sub(r'jvmTarget\s*=\s*JavaVersion\.VERSION_\d+\.toString\(\)', 'jvmTarget = JavaVersion.VERSION_17.toString()', s)
-          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' not in s:
-              s += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
-          p.write_text(s)
 
+          # Flutter's current Android template may omit an app dependencies block.
+          # Add one explicitly so the desugaring dependency is always present.
+          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' not in s:
+              dep = '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+              s += dep
+
+          p.write_text(s)
+          PY
+
+          echo '--- android/app/build.gradle.kts (relevant lines) ---'
+          grep -n -E 'compileSdk|compileOptions|isCoreLibraryDesugaringEnabled|sourceCompatibility|targetCompatibility|jvmTarget|dependencies|coreLibraryDesugaring' android/app/build.gradle.kts || true
+
+          python3 - <<'PY'
+          from pathlib import Path
           m = Path('android/app/src/main/AndroidManifest.xml')
           s = m.read_text()
           if 'android.permission.POST_NOTIFICATIONS' not in s:
