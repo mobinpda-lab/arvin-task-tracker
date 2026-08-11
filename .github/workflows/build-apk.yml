@@ -20,7 +20,29 @@ jobs:
       - name: Create Android project shell
         run: flutter create --org com.arvin --project-name arvin /tmp/arvin
 
-      - name: Copy Arvin source
+      - name: Configure Android notifications and desugaring
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/arvin/android/app/build.gradle.kts')
+          s=p.read_text()
+          if 'isCoreLibraryDesugaringEnabled = true' not in s:
+              s=s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true')
+          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")' not in s:
+              s=s.replace('dependencies {', 'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")')
+          p.write_text(s)
+
+          m=Path('/tmp/arvin/android/app/src/main/AndroidManifest.xml')
+          s=m.read_text()
+          if 'android.permission.POST_NOTIFICATIONS' not in s:
+              s=s.replace('<manifest ', '<manifest xmlns:android="http://schemas.android.com/apk/res/android" ' ) if 'xmlns:android=' not in s else s
+              s=s.replace('<application ', '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <application ', 1)
+          if 'ScheduledNotificationReceiver' not in s:
+              s=s.replace('</application>', '''<receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n            <intent-filter>\n                <action android:name="android.intent.action.BOOT_COMPLETED"/>\n                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>\n                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>\n                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>\n            </intent-filter>\n        </receiver>\n    </application>''')
+          m.write_text(s)
+          PY
+
+      - name: Copy Arvin source and fonts
         run: |
           cp pubspec.yaml /tmp/arvin/pubspec.yaml
           cp lib/main.dart /tmp/arvin/lib/main.dart
