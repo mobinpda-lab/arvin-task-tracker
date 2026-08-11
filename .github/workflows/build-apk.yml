@@ -42,21 +42,17 @@ jobs:
           s = re.sub(r'targetCompatibility\s*=\s*JavaVersion\.VERSION_\d+', 'targetCompatibility = JavaVersion.VERSION_17', s)
           s = re.sub(r'jvmTarget\s*=\s*JavaVersion\.VERSION_\d+\.toString\(\)', 'jvmTarget = JavaVersion.VERSION_17.toString()', s)
 
-          # Add the desugaring library to the app dependencies block.
+          # Flutter's current Android template may omit an app dependencies block.
+          # Add one explicitly so the desugaring dependency is always present.
           if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' not in s:
-              idx = s.find('dependencies {')
-              if idx == -1:
-                  raise SystemExit('Could not find dependencies block in android/app/build.gradle.kts')
-              line_end = s.find('\n', idx)
-              if line_end == -1:
-                  line_end = len(s)
-              s = s[:line_end + 1] + '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n' + s[line_end + 1:]
+              dep = '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+              s += dep
 
           p.write_text(s)
           PY
 
           echo '--- android/app/build.gradle.kts (relevant lines) ---'
-          grep -n -E 'compileSdk|compileOptions|isCoreLibraryDesugaringEnabled|sourceCompatibility|targetCompatibility|jvmTarget|dependencies|coreLibraryDesugaring' android/app/build.gradle.kts
+          grep -n -E 'compileSdk|compileOptions|isCoreLibraryDesugaringEnabled|sourceCompatibility|targetCompatibility|jvmTarget|dependencies|coreLibraryDesugaring' android/app/build.gradle.kts || true
 
           python3 - <<'PY'
           from pathlib import Path
