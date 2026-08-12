@@ -11,64 +11,57 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-
       - name: Create Android project shell
         run: flutter create --org com.arvin --project-name arvin /tmp/arvin
-
       - name: Configure Android for scheduled notifications
         working-directory: /tmp/arvin
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p = Path('android/app/build.gradle.kts')
-          s = p.read_text()
-          s = re.sub(r'compileSdk\s*=\s*\d+', 'compileSdk = 35', s)
-          if 'compileSdk = 35' not in s and 'compileSdk 35' not in s:
-              s = s.replace('android {', 'android {\n    compileSdk = 35', 1)
+          p=Path('android/app/build.gradle.kts')
+          s=p.read_text()
+          s=re.sub(r'compileSdk\s*=\s*\d+','compileSdk = 35',s)
           if 'isCoreLibraryDesugaringEnabled = true' not in s:
-              s = s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
-          s = re.sub(r'sourceCompatibility\s*=\s*JavaVersion\.VERSION_\d+', 'sourceCompatibility = JavaVersion.VERSION_17', s)
-          s = re.sub(r'targetCompatibility\s*=\s*JavaVersion\.VERSION_\d+', 'targetCompatibility = JavaVersion.VERSION_17', s)
-          s = re.sub(r'jvmTarget\s*=\s*JavaVersion\.VERSION_\d+\.toString\(\)', 'jvmTarget = JavaVersion.VERSION_17.toString()', s)
+              s=s.replace('compileOptions {','compileOptions {\n        isCoreLibraryDesugaringEnabled = true',1)
+          s=re.sub(r'sourceCompatibility\s*=\s*JavaVersion\.VERSION_\d+','sourceCompatibility = JavaVersion.VERSION_17',s)
+          s=re.sub(r'targetCompatibility\s*=\s*JavaVersion\.VERSION_\d+','targetCompatibility = JavaVersion.VERSION_17',s)
+          s=re.sub(r'jvmTarget\s*=\s*JavaVersion\.VERSION_\d+\.toString\(\)','jvmTarget = JavaVersion.VERSION_17.toString()',s)
           if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' not in s:
               s += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
           p.write_text(s)
-          m = Path('android/app/src/main/AndroidManifest.xml')
-          s = m.read_text()
+          m=Path('android/app/src/main/AndroidManifest.xml')
+          s=m.read_text()
           if 'android.permission.POST_NOTIFICATIONS' not in s:
-              s = s.replace('<application ', '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <application ', 1)
+              s=s.replace('<application ','    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <application ',1)
           if 'ScheduledNotificationReceiver' not in s:
-              receivers = '''\n        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n            <intent-filter>\n                <action android:name="android.intent.action.BOOT_COMPLETED"/>\n                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>\n                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>\n                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>\n            </intent-filter>\n        </receiver>\n'''
-              s = s.replace('    </application>', receivers + '    </application>', 1)
+              receivers='''\n        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n            <intent-filter>\n                <action android:name="android.intent.action.BOOT_COMPLETED"/>\n                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>\n                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>\n                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>\n            </intent-filter>\n        </receiver>\n'''
+              s=s.replace('    </application>',receivers+'    </application>',1)
           m.write_text(s)
           PY
-
-      - name: Assemble Arvin source
+      - name: Assemble Arvin final source
         run: |
-          cp lib/main.dart /tmp/arvin/lib/main.dart
+          cp lib/arvin_final.dart /tmp/arvin/lib/main.dart
           cp pubspec.yaml /tmp/arvin/pubspec.yaml
           rm -rf /tmp/arvin/test
           mkdir -p /tmp/arvin/assets/fonts
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Regular.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Regular.ttf
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Bold.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Bold.ttf
           sed -i '/flutter_lints/d' /tmp/arvin/analysis_options.yaml || true
-
       - name: Check Dart source
         working-directory: /tmp/arvin
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
-
       - name: Build release APK
         working-directory: /tmp/arvin
         run: flutter build apk --release
-
+      - name: Verify APK
+        run: test -s /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: arvin-apk-final
+          name: arvin-final-apk
           path: /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
