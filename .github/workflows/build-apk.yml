@@ -65,3 +65,5 @@ jobs:
         with:
           name: arvin-v2-apk
           path: /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
+
+# Build verification trigger update.
