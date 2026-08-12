@@ -1,0 +1,50 @@
+name: Arvin 0.5 Clean APK
+on:
+  push:
+    branches: [arvin-0.5-clean]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter create --org com.arvin --project-name arvin /tmp/arvin
+      - name: Configure Android
+        working-directory: /tmp/arvin
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('android/app/build.gradle.kts')
+          s=p.read_text()
+          s=re.sub(r'compileSdk\s*=\s*\d+','compileSdk = 35',s)
+          s=re.sub(r'sourceCompatibility\s*=\s*JavaVersion\.VERSION_\d+','sourceCompatibility = JavaVersion.VERSION_17',s)
+          s=re.sub(r'targetCompatibility\s*=\s*JavaVersion\.VERSION_\d+','targetCompatibility = JavaVersion.VERSION_17',s)
+          s=re.sub(r'jvmTarget\s*=\s*JavaVersion\.VERSION_\d+\.toString\(\)','jvmTarget = JavaVersion.VERSION_17.toString()',s)
+          p.write_text(s)
+          PY
+      - name: Assemble
+        run: |
+          cp lib/main.dart /tmp/arvin/lib/main.dart
+          cp pubspec.yaml /tmp/arvin/pubspec.yaml
+          rm -rf /tmp/arvin/test
+          mkdir -p /tmp/arvin/assets/fonts
+          curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Regular.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Regular.ttf
+          curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Bold.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Bold.ttf
+      - name: Analyze
+        working-directory: /tmp/arvin
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: Build APK
+        working-directory: /tmp/arvin
+        run: flutter build apk --release
+      - name: Verify
+        run: test -s /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arvin-0.5-clean-apk
+          path: /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk

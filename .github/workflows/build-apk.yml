@@ -59,16 +59,15 @@ jobs:
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Bold.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Bold.ttf
           sed -i '/flutter_lints/d' /tmp/arvin/analysis_options.yaml || true
 
-      - name: Check Dart source
-        working-directory: /tmp/arvin
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
-
       - name: Build release APK
         working-directory: /tmp/arvin
-        run: flutter build apk --release
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-warnings
+          flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: arvin-apk-final
+          name: arvin-apk-stable-build
           path: /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
