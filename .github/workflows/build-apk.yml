@@ -51,7 +51,7 @@ jobs:
 
       - name: Assemble Arvin source
         run: |
-          cp lib/main_new.dart /tmp/arvin/lib/main.dart
+          cp lib/main.dart /tmp/arvin/lib/main.dart
           cp pubspec.yaml /tmp/arvin/pubspec.yaml
           rm -rf /tmp/arvin/test
           mkdir -p /tmp/arvin/assets/fonts
@@ -69,5 +69,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: arvin-apk-final
+          name: arvin-apk-stable-build
           path: /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
