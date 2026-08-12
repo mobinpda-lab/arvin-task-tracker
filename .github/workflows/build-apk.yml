@@ -17,7 +17,7 @@ jobs:
           channel: stable
       - name: Create Android project shell
         run: flutter create --org com.arvin --project-name arvin /tmp/arvin
-      - name: Configure Android for scheduled notifications
+      - name: Configure Android
         working-directory: /tmp/arvin
         run: |
           python3 - <<'PY'
@@ -43,9 +43,9 @@ jobs:
               s=s.replace('    </application>',receivers+'    </application>',1)
           m.write_text(s)
           PY
-      - name: Assemble Arvin final source
+      - name: Assemble Arvin v2 source
         run: |
-          cp lib/arvin_final.dart /tmp/arvin/lib/main.dart
+          cp lib/arvin_final_v2.dart /tmp/arvin/lib/main.dart
           cp pubspec.yaml /tmp/arvin/pubspec.yaml
           rm -rf /tmp/arvin/test
           mkdir -p /tmp/arvin/assets/fonts
@@ -63,5 +63,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: arvin-final-apk
+          name: arvin-v2-apk
           path: /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
