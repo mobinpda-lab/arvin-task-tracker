@@ -26,36 +26,19 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-
           p = Path('android/app/build.gradle.kts')
           s = p.read_text()
-
-          # Compile SDK required by flutter_local_notifications 19+.
           s = re.sub(r'compileSdk\s*=\s*\d+', 'compileSdk = 35', s)
           if 'compileSdk = 35' not in s and 'compileSdk 35' not in s:
               s = s.replace('android {', 'android {\n    compileSdk = 35', 1)
-
-          # Enable core library desugaring and Java 17.
           if 'isCoreLibraryDesugaringEnabled = true' not in s:
               s = s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
           s = re.sub(r'sourceCompatibility\s*=\s*JavaVersion\.VERSION_\d+', 'sourceCompatibility = JavaVersion.VERSION_17', s)
           s = re.sub(r'targetCompatibility\s*=\s*JavaVersion\.VERSION_\d+', 'targetCompatibility = JavaVersion.VERSION_17', s)
           s = re.sub(r'jvmTarget\s*=\s*JavaVersion\.VERSION_\d+\.toString\(\)', 'jvmTarget = JavaVersion.VERSION_17.toString()', s)
-
-          # Flutter's current Android template may omit an app dependencies block.
-          # Add one explicitly so the desugaring dependency is always present.
           if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' not in s:
-              dep = '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
-              s += dep
-
+              s += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
           p.write_text(s)
-          PY
-
-          echo '--- android/app/build.gradle.kts (relevant lines) ---'
-          grep -n -E 'compileSdk|compileOptions|isCoreLibraryDesugaringEnabled|sourceCompatibility|targetCompatibility|jvmTarget|dependencies|coreLibraryDesugaring' android/app/build.gradle.kts || true
-
-          python3 - <<'PY'
-          from pathlib import Path
           m = Path('android/app/src/main/AndroidManifest.xml')
           s = m.read_text()
           if 'android.permission.POST_NOTIFICATIONS' not in s:
@@ -66,10 +49,10 @@ jobs:
           m.write_text(s)
           PY
 
-      - name: Copy Arvin source and fonts
+      - name: Assemble Arvin source
         run: |
+          cat lib/arvin_parts/00.dart lib/arvin_parts/01.dart lib/arvin_parts/02.dart lib/arvin_parts/03.dart lib/arvin_parts/04.dart lib/arvin_parts/05a.dart lib/arvin_parts/05b.dart lib/arvin_parts/06.dart > /tmp/arvin/lib/main.dart
           cp pubspec.yaml /tmp/arvin/pubspec.yaml
-          cp lib/main.dart /tmp/arvin/lib/main.dart
           mkdir -p /tmp/arvin/assets/fonts
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Regular.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Regular.ttf
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Bold.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Bold.ttf
@@ -78,10 +61,11 @@ jobs:
         working-directory: /tmp/arvin
         run: |
           flutter pub get
+          flutter analyze --no-fatal-warnings
           flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: arvin-apk
+          name: arvin-apk-final
           path: /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
