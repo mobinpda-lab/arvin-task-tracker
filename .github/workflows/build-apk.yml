@@ -11,12 +11,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
+
       - name: Create Android project shell
         run: flutter create --org com.arvin --project-name arvin /tmp/arvin
+
       - name: Configure Android
         working-directory: /tmp/arvin
         run: |
@@ -43,8 +47,10 @@ jobs:
               s=s.replace('    </application>',receivers+'    </application>',1)
           m.write_text(s)
           PY
+
       - name: Assemble Arvin v2 source
         run: |
+          test -s lib/arvin_final_v2.dart
           cp lib/arvin_final_v2.dart /tmp/arvin/lib/main.dart
           cp pubspec.yaml /tmp/arvin/pubspec.yaml
           rm -rf /tmp/arvin/test
@@ -52,14 +58,22 @@ jobs:
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Regular.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Regular.ttf
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Bold.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Bold.ttf
           sed -i '/flutter_lints/d' /tmp/arvin/analysis_options.yaml || true
+
+      - name: Resolve Dart dependencies
+        working-directory: /tmp/arvin
+        run: flutter pub get
+
       - name: Check Dart source
         working-directory: /tmp/arvin
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
       - name: Build release APK
         working-directory: /tmp/arvin
         run: flutter build apk --release
+
       - name: Verify APK
         run: test -s /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
