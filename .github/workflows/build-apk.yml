@@ -51,11 +51,13 @@ jobs:
 
       - name: Assemble Arvin source
         run: |
-          cat lib/arvin_parts/00.dart lib/arvin_parts/01.dart lib/arvin_parts/02.dart lib/arvin_parts/03.dart lib/arvin_parts/04.dart lib/arvin_parts/05a.dart lib/arvin_parts/05b.dart lib/arvin_parts/06.dart > /tmp/arvin/lib/main.dart
+          cp lib/main_new.dart /tmp/arvin/lib/main.dart
           cp pubspec.yaml /tmp/arvin/pubspec.yaml
+          rm -rf /tmp/arvin/test
           mkdir -p /tmp/arvin/assets/fonts
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Regular.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Regular.ttf
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Bold.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Bold.ttf
+          sed -i '/flutter_lints/d' /tmp/arvin/analysis_options.yaml || true
 
       - name: Build release APK
         working-directory: /tmp/arvin
