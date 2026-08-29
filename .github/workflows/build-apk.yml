@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   build:
@@ -59,6 +61,21 @@ jobs:
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Bold.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Bold.ttf
           sed -i '/flutter_lints/d' /tmp/arvin/analysis_options.yaml || true
 
+      - name: Apply narrow v2 syntax recovery
+        working-directory: /tmp/arvin
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lib/main.dart')
+          s=p.read_text()
+          old="child:const Text('ذخیره'))])));}}"
+          new="child:const Text('ذخیره'))]))));}}"
+          if old not in s:
+              raise SystemExit('expected Editor syntax target not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+
       - name: Resolve Dart dependencies
         working-directory: /tmp/arvin
         run: flutter pub get
@@ -79,5 +96,3 @@ jobs:
         with:
           name: arvin-v2-apk
           path: /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
-
-# Build verification trigger update.
