@@ -50,31 +50,16 @@ jobs:
           m.write_text(s)
           PY
 
-      - name: Assemble Arvin v2 source
+      - name: Assemble stable Arvin source
         run: |
-          test -s lib/arvin_final_v2.dart
-          cp lib/arvin_final_v2.dart /tmp/arvin/lib/main.dart
+          test -s lib/main.dart
+          cp lib/main.dart /tmp/arvin/lib/main.dart
           cp pubspec.yaml /tmp/arvin/pubspec.yaml
           rm -rf /tmp/arvin/test
           mkdir -p /tmp/arvin/assets/fonts
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Regular.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Regular.ttf
           curl -L --fail -o /tmp/arvin/assets/fonts/Vazirmatn-Bold.ttf https://raw.githubusercontent.com/rastikerdar/vazirmatn/master/fonts/ttf/Vazirmatn-Bold.ttf
           sed -i '/flutter_lints/d' /tmp/arvin/analysis_options.yaml || true
-
-      - name: Apply narrow v2 syntax recovery
-        working-directory: /tmp/arvin
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('lib/main.dart')
-          s=p.read_text()
-          old="child:const Text('ذخیره'))])));}}"
-          new="child:const Text('ذخیره'))]))));}}"
-          if old not in s:
-              raise SystemExit('expected Editor syntax target not found')
-          s=s.replace(old,new,1)
-          p.write_text(s)
-          PY
 
       - name: Resolve Dart dependencies
         working-directory: /tmp/arvin
@@ -94,5 +79,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: arvin-v2-apk
+          name: arvin-apk-recovered
           path: /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
