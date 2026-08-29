@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   build:
@@ -48,10 +50,10 @@ jobs:
           m.write_text(s)
           PY
 
-      - name: Assemble Arvin v2 source
+      - name: Assemble stable Arvin source
         run: |
-          test -s lib/arvin_final_v2.dart
-          cp lib/arvin_final_v2.dart /tmp/arvin/lib/main.dart
+          test -s lib/main.dart
+          cp lib/main.dart /tmp/arvin/lib/main.dart
           cp pubspec.yaml /tmp/arvin/pubspec.yaml
           rm -rf /tmp/arvin/test
           mkdir -p /tmp/arvin/assets/fonts
@@ -77,7 +79,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: arvin-v2-apk
+          name: arvin-apk-recovered
           path: /tmp/arvin/build/app/outputs/flutter-apk/app-release.apk
-
-# Build verification trigger update.
